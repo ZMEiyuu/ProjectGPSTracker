@@ -38,25 +38,31 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;color:#4285F4'>GPS Tracker </h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;color:#4285F4'>GPS Tracker</h1>", unsafe_allow_html=True)
 
 if "points" not in st.session_state:
     st.session_state.points = []
 
 def get_latest_data():
     url = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds.json?results=1&api_key={READ_API_KEY}"
-    response = requests.get(url).json()
-    feed = response['feeds'][0]
-    lat = float(feed['field1']) if feed['field1'] else 0
-    lon = float(feed['field2']) if feed['field2'] else 0
-    waktu = feed['field3'] if feed['field3'] else "N/A"
-    tanggal = feed['field4'] if feed['field4'] else "N/A"
-    status_alat = int(feed['field5']) if feed['field5'] else 0
-    return lat, lon, waktu, tanggal, status_alat
+    try:
+        response = requests.get(url, timeout=5).json()
+        feed = response['feeds'][0]
+        lat = float(feed['field1']) if feed['field1'] else None
+        lon = float(feed['field2']) if feed['field2'] else None
+        waktu = feed['field3'] if feed['field3'] else "N/A"
+        tanggal = feed['field4'] if feed['field4'] else "N/A"
+        status_alat = int(feed['field5']) if feed['field5'] else 0
+        return lat, lon, waktu, tanggal, status_alat
+    except:
+        return None, None, "N/A", "N/A", 0
 
 def set_device(status):
-    url = f"https://api.thingspeak.com/update?api_key={WRITE_API_KEY}&field5={status}"
-    requests.get(url)
+    try:
+        url = f"https://api.thingspeak.com/update?api_key={WRITE_API_KEY}&field5={status}"
+        requests.get(url, timeout=5)
+    except:
+        pass
 
 st.sidebar.markdown("<h3 style='color:#4285F4'>Kontrol Alat</h3>", unsafe_allow_html=True)
 if st.sidebar.button("Hidupkan Alat"):
@@ -68,24 +74,28 @@ if st.sidebar.button("Matikan Alat"):
 st_autorefresh(interval=15000, key="gps_refresh")
 
 lat, lon, waktu, tanggal, status_alat = get_latest_data()
-if lat != 0 and lon != 0:
+if lat is not None and lon is not None:
     st.session_state.points.append([lat, lon])
+else:
+    lat, lon = 0, 0
 
 m = folium.Map(location=[lat, lon], zoom_start=18, tiles='OpenStreetMap')
 
-marker_color = "green" if status_alat==1 else "red"
+marker_color = "green" if status_alat == 1 else "red"
+status_text = "ON" if status_alat == 1 else "OFF"
 maps_link = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
+
 popup_html = f"""
 <b>Waktu:</b> {waktu}<br>
 <b>Tanggal:</b> {tanggal}<br>
-<b>Status Alat:</b> {'ON' if status_alat==1 else 'OFF'}<br>
+<b>Status Alat:</b> {status_text}<br>
 <a href='{maps_link}' target='_blank' style='color:#4285F4;font-weight:bold'>Navigasi ke sini</a>
 """
 
 folium.Marker(
     location=[lat, lon],
     popup=popup_html,
-    tooltip="GPS Tracker",
+    tooltip=f"GPS Tracker - {status_text}",
     icon=folium.Icon(color=marker_color, icon='map-marker', prefix='fa')
 ).add_to(m)
 
