@@ -2,7 +2,6 @@ import requests
 import folium
 from streamlit_folium import st_folium
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
 
 CHANNEL_ID = "3167055"
 WRITE_API_KEY = "L5379U9H379NGATS"
@@ -47,10 +46,10 @@ def get_latest_data():
     url = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds.json?results=1&api_key={READ_API_KEY}"
     response = requests.get(url).json()
     feed = response['feeds'][0]
-    lat = float(feed['field1']) if feed['field1'] else 0
-    lon = float(feed['field2']) if feed['field2'] else 0
-    waktu = feed['field3'] if feed['field3'] else "N/A"
-    tanggal = feed['field4'] if feed['field4'] else "N/A"
+    lat = float(feed['field1'])
+    lon = float(feed['field2'])
+    waktu = feed['field3']
+    tanggal = feed['field4']
     status_alat = int(feed['field5']) if feed['field5'] else 0
     return lat, lon, waktu, tanggal, status_alat
 
@@ -64,12 +63,8 @@ if st.sidebar.button("Hidupkan Alat"):
 if st.sidebar.button("Matikan Alat"):
     set_device(0)
 
-# Auto-refresh tiap 15 detik
-st_autorefresh(interval=15000, key="gps_refresh")
-
 lat, lon, waktu, tanggal, status_alat = get_latest_data()
-if lat != 0 and lon != 0:
-    st.session_state.points.append([lat, lon])
+st.session_state.points.append([lat, lon])
 
 m = folium.Map(location=[lat, lon], zoom_start=18, tiles='OpenStreetMap')
 
@@ -98,3 +93,5 @@ st.markdown("""
 
 st_folium(m, width="100%", height=500)
 st.markdown("</div>", unsafe_allow_html=True)
+
+st.experimental_rerun()
