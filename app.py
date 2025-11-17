@@ -44,5 +44,5 @@ st_folium(m, width="100%", height=500)
 st.markdown("<h3 style='color:#4285F4'>Histori</h3>", unsafe_allow_html=True)
 for i, p in enumerate(points_data):
     # Link navigasi untuk membuka Google Maps app
-    maps_link = f"comgooglemaps://?daddr={p['lat']},{p['lon']}&directionsmode=driving"
+    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
     st.markdown(f"{i+1}. Waktu: {p['waktu']}, Tanggal: {p['tanggal']} — [Navigasi]({maps_link})")
