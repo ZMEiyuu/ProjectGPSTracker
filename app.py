@@ -22,12 +22,10 @@ last_point = points_data[-1]
 m = folium.Map(location=[last_point['lat'], last_point['lon']], zoom_start=18)
 
 for p in points_data:
-    # Link navigasi mobile-friendly (buka Maps app di Android/iOS)
-    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    # Hanya tampilkan info waktu & tanggal di popup
     popup_html = f"""
     <b>Waktu:</b> {p['waktu']}<br>
     <b>Tanggal:</b> {p['tanggal']}<br>
-    <a href="{maps_link}" target="_blank" rel="noopener noreferrer">Navigasi</a>
     """
     folium.Marker(
         location=[p['lat'], p['lon']],
@@ -45,5 +43,6 @@ st_folium(m, width="100%", height=500)
 # --- History UI ---
 st.markdown("<h3 style='color:#4285F4'>Histori</h3>", unsafe_allow_html=True)
 for i, p in enumerate(points_data):
-    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    # Link navigasi untuk membuka Google Maps app
+    maps_link = f"comgooglemaps://?daddr={p['lat']},{p['lon']}&directionsmode=driving"
     st.markdown(f"{i+1}. Waktu: {p['waktu']}, Tanggal: {p['tanggal']} — [Navigasi]({maps_link})")
