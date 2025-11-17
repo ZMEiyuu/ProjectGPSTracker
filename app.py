@@ -1,97 +1,39 @@
-import requests
+import streamlit as st
 import folium
 from streamlit_folium import st_folium
-import streamlit as st
+from streamlit_autorefresh import st_autorefresh
+from system import get_recent_points
 
-CHANNEL_ID = "3167055"
-WRITE_API_KEY = "L5379U9H379NGATS"
-READ_API_KEY = "8NQY0UZ2O9AAI5YV"
+# --- Auto-refresh halaman ---
+st_autorefresh(interval=5000, key="gps_refresh")  # Halaman akan otomatis refresh tiap 5 detik
 
-st.set_page_config(page_title="GPS Tracker", layout="wide")
-st.markdown("""
-<style>
-body {
-    background-color: #f0f0f0;
-    color: #000000;
-    font-family: Arial, sans-serif;
-}
-.sidebar .sidebar-content {
-    background-color: #ffffff;
-    color: #000000;
-}
-.stButton>button {
-    background: linear-gradient(145deg, #4285F4, #1a73e8);
-    color: #ffffff;
-    font-weight: bold;
-    border-radius: 12px;
-    padding: 12px;
-    margin-top: 10px;
-    width: 100%;
-    box-shadow: 0 6px 0 #1a73e8, 0 6px 12px rgba(0,0,0,0.2);
-    transition: all 0.2s ease;
-}
-.stButton>button:active {
-    transform: translateY(4px);
-    box-shadow: 0 2px 0 #1a73e8, 0 2px 6px rgba(0,0,0,0.2);
-}
-</style>
-""", unsafe_allow_html=True)
+# --- Header UI ---
+st.set_page_config(page_title="GPS Tracker", layout="wide")  # Konfigurasi halaman Streamlit
+st.markdown("<h1 style='text-align:center;color:#4285F4'>GPS Tracker</h1>", unsafe_allow_html=True)  # Judul halaman
 
-st.markdown("<h1 style='text-align:center;color:#4285F4'>GPS Tracker </h1>", unsafe_allow_html=True)
+# --- Ambil data GPS ---
+points_data = get_recent_points(limit=20)  # Memanggil backend untuk mengambil 20 titik GPS terbaru
+if not points_data:
+    st.warning("Belum ada data GPS tersedia.")  # Menampilkan peringatan jika data kosong
+    st.stop()
 
-if "points" not in st.session_state:
-    st.session_state.points = []
+# --- Peta ---
+last_point = points_data[-1]  # Titik terakhir dijadikan pusat peta
+m = folium.Map(location=[last_point['lat'], last_point['lon']], zoom_start=18)  # Inisialisasi peta
+for p in points_data:  # Menambahkan marker dan popup untuk tiap titik GPS
+    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    popup_html = f"<b>Waktu:</b> {p['waktu']}<br><b>Tanggal:</b> {p['tanggal']}<br><a href='{maps_link}' target='_blank'>Navigasi</a>"
+    folium.Marker(location=[p['lat'], p['lon']], popup=popup_html, icon=folium.Icon(color="blue")).add_to(m)
 
-def get_latest_data():
-    url = f"https://api.thingspeak.com/channels/{CHANNEL_ID}/feeds.json?results=1&api_key={READ_API_KEY}"
-    response = requests.get(url).json()
-    feed = response['feeds'][0]
-    lat = float(feed['field1'])
-    lon = float(feed['field2'])
-    waktu = feed['field3']
-    tanggal = feed['field4']
-    status_alat = int(feed['field5']) if feed['field5'] else 0
-    return lat, lon, waktu, tanggal, status_alat
+# Menambahkan garis jalur antar titik GPS
+polyline_points = [[p['lat'], p['lon']] for p in points_data]
+if len(polyline_points) > 1:
+    folium.PolyLine(polyline_points, color="#4285F4", weight=4, opacity=0.8).add_to(m)
 
-def set_device(status):
-    url = f"https://api.thingspeak.com/update?api_key={WRITE_API_KEY}&field5={status}"
-    requests.get(url)
+st_folium(m, width="100%", height=500)  # Menampilkan peta di Streamlit
 
-st.sidebar.markdown("<h3 style='color:#4285F4'>Kontrol Alat</h3>", unsafe_allow_html=True)
-if st.sidebar.button("Hidupkan Alat"):
-    set_device(1)
-if st.sidebar.button("Matikan Alat"):
-    set_device(0)
-
-lat, lon, waktu, tanggal, status_alat = get_latest_data()
-st.session_state.points.append([lat, lon])
-
-m = folium.Map(location=[lat, lon], zoom_start=18, tiles='OpenStreetMap')
-
-marker_color = "green" if status_alat==1 else "red"
-maps_link = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
-popup_html = f"""
-<b>Waktu:</b> {waktu}<br>
-<b>Tanggal:</b> {tanggal}<br>
-<b>Status Alat:</b> {'ON' if status_alat==1 else 'OFF'}<br>
-<a href='{maps_link}' target='_blank' style='color:#4285F4;font-weight:bold'>Navigasi ke sini</a>
-"""
-
-folium.Marker(
-    location=[lat, lon],
-    popup=popup_html,
-    tooltip="GPS Tracker",
-    icon=folium.Icon(color=marker_color, icon='map-marker', prefix='fa')
-).add_to(m)
-
-if len(st.session_state.points) > 1:
-    folium.PolyLine(st.session_state.points, color="#4285F4", weight=4, opacity=0.8).add_to(m)
-
-st.markdown("""
-<div style="border: 4px solid #4285F4; border-radius: 5px; padding: 5px; width: 100%; box-sizing: border-box;">
-""", unsafe_allow_html=True)
-
-st_folium(m, width="100%", height=500)
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.experimental_rerun()
+# --- History UI ---
+st.markdown("<h3 style='color:#4285F4'>Histori</h3>", unsafe_allow_html=True)  # Judul history
+for i, p in enumerate(points_data):  # Menampilkan daftar histori titik GPS
+    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    st.markdown(f"{i+1}. Waktu: {p['waktu']}, Tanggal: {p['tanggal']} — [Navigasi]({maps_link})")
