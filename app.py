@@ -21,7 +21,8 @@ if not points_data:
 last_point = points_data[-1]  # Titik terakhir dijadikan pusat peta
 m = folium.Map(location=[last_point['lat'], last_point['lon']], zoom_start=18)  # Inisialisasi peta
 for p in points_data:  # Menambahkan marker dan popup untuk tiap titik GPS
-    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    # Link navigasi mobile-friendly
+    maps_link = f"https://maps.google.com/?q={p['lat']},{p['lon']}"
     popup_html = f"<b>Waktu:</b> {p['waktu']}<br><b>Tanggal:</b> {p['tanggal']}<br><a href='{maps_link}' target='_blank'>Navigasi</a>"
     folium.Marker(location=[p['lat'], p['lon']], popup=popup_html, icon=folium.Icon(color="blue")).add_to(m)
 
@@ -35,5 +36,5 @@ st_folium(m, width="100%", height=500)  # Menampilkan peta di Streamlit
 # --- History UI ---
 st.markdown("<h3 style='color:#4285F4'>Histori</h3>", unsafe_allow_html=True)  # Judul history
 for i, p in enumerate(points_data):  # Menampilkan daftar histori titik GPS
-    maps_link = f"https://www.google.com/maps/dir/?api=1&destination={p['lat']},{p['lon']}"
+    maps_link = f"https://maps.google.com/?q={p['lat']},{p['lon']}"  # Link mobile-friendly
     st.markdown(f"{i+1}. Waktu: {p['waktu']}, Tanggal: {p['tanggal']} — [Navigasi]({maps_link})")
